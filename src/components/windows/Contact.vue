@@ -1,8 +1,22 @@
 <script setup lang="ts">
 /**
  * Contact.vue - "联系我.app" 窗口内容
- * 演示用：展示联系方式占位
+ * 从后端 API 获取联系方式并渲染
  */
+import { ref, onMounted } from 'vue'
+
+interface ContactItem {
+  icon: string
+  label: string
+  value: string
+}
+
+const contacts = ref<ContactItem[]>([])
+
+onMounted(async () => {
+  const res = await fetch('http://localhost:8080/api/contact')
+  contacts.value = await res.json()
+})
 </script>
 
 <template>
@@ -12,12 +26,7 @@
 
     <div class="space-y-3">
       <div
-        v-for="(item, i) in [
-          { icon: '📧', label: 'Email', value: 'todo@example.com' },
-          { icon: '🐙', label: 'GitHub', value: 'github.com/My-TuDo' },
-          { icon: '📱', label: '微信', value: 'TODO_WeChat' },
-          { icon: '🐦', label: 'Twitter / X', value: '@TODO_dev' },
-        ]"
+        v-for="(item, i) in contacts"
         :key="i"
         class="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors border border-gray-100"
       >
