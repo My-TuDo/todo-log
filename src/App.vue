@@ -36,6 +36,12 @@ const apps: AppDefinition[] = [
     icon: 'Mail',
     componentName: 'Contact',
   },
+  {
+    id: 'admin',
+    title: '后台管理.app',
+    icon: 'Terminal',
+    componentName: 'AdminTerminal',
+  },
 ]
 
 /** 桌面壁纸 URL（使用 Unsplash 的高质量图片） */

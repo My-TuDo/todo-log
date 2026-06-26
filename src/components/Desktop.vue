@@ -24,6 +24,7 @@ import ArticleList from './windows/ArticleList.vue'
 import AboutMe from './windows/AboutMe.vue'
 import Projects from './windows/Projects.vue'
 import Contact from './windows/Contact.vue'
+import AdminTerminal from './windows/AdminTerminal.vue'
 
 const props = defineProps<{
   /** 壁纸图片 URL */
@@ -46,6 +47,7 @@ const componentMap: ComponentMap = {
   AboutMe,
   Projects,
   Contact,
+  AdminTerminal,
 }
 
 // ============ 窗口操作方法 ============
