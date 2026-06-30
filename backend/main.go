@@ -1,19 +1,13 @@
 package main
 
 import (
-	"net/http"
+	"todo-blog/routes"
 
-	"todo-blog/handler"
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	// 注册路由
-	http.HandleFunc("/api/articles", handler.GetArticles)
-	http.HandleFunc("/api/projects", handler.GetProjects)
-	http.HandleFunc("/api/profile", handler.GetProfile)
-	http.HandleFunc("/api/contact", handler.GetContact)
-	http.HandleFunc("/api/login", handler.Login)
-
-	// 处理请求
-	http.ListenAndServe(":8080", nil)
+	r := gin.Default()    // 创建引擎
+	routes.SetupRoutes(r) // 注册路由
+	r.Run(":8080")        // 启动服务
 }
