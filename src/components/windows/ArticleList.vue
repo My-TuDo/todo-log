@@ -49,11 +49,20 @@ onMounted(async () => {
         :key="article.id"
         class="p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer border border-gray-100"
       >
-        <h3 class="font-medium text-gray-800">{{ article.title }}</h3>
-        <p class="text-xs text-gray-500 mt-1">{{ article.summary }}</p>
-        <div class="flex items-center gap-3 mt-2 text-xs text-gray-400">
-          <span>{{ article.created_at }}</span>
-          <span>{{ article.views }} 次阅读</span>
+        <div class="flex gap-3">
+          <img
+            v-if="article.image_url"
+            :src="article.image_url"
+            class="w-16 h-16 rounded-lg object-cover shrink-0 mt-0.5"
+          />
+          <div class="flex-1 min-w-0">
+            <h3 class="font-medium text-gray-800">{{ article.title }}</h3>
+            <p class="text-xs text-gray-500 mt-1">{{ article.summary }}</p>
+            <div class="flex items-center gap-3 mt-2 text-xs text-gray-400">
+              <span>{{ article.created_at }}</span>
+              <span>{{ article.views }} 次阅读</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

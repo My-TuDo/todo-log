@@ -14,6 +14,7 @@ export const mockArticles: Article[] = [
     summary: '全面了解 Vue 3 的 Composition API，包括 ref、reactive、computed、watch 等核心 API 的使用方法和最佳实践。',
     created_at: '2026-06-15',
     views: 128,
+    image_url: 'https://placehold.co/800x400/e2e8f0/64748b?text=Vue+3',
   },
   {
     id: 2,
@@ -21,6 +22,7 @@ export const mockArticles: Article[] = [
     summary: '深入讲解 TypeScript 中的条件类型、映射类型、模板字面量类型等高级特性，提升你的类型编程能力。',
     created_at: '2026-06-12',
     views: 96,
+    image_url: 'https://placehold.co/800x400/e2e8f0/64748b?text=TypeScript',
   },
   {
     id: 3,
@@ -28,6 +30,7 @@ export const mockArticles: Article[] = [
     summary: 'Tailwind CSS v4 带来了全新的引擎和 API，本文带你快速上手新版本的核心变化。',
     created_at: '2026-06-08',
     views: 215,
+    image_url: 'https://placehold.co/800x400/e2e8f0/64748b?text=Tailwind',
   },
   {
     id: 4,
@@ -35,6 +38,7 @@ export const mockArticles: Article[] = [
     summary: '使用 Vue 3 + TypeScript + Tailwind CSS 实现一个仿 macOS 的 Web 桌面操作系统。',
     created_at: '2026-06-01',
     views: 342,
+    image_url: 'https://placehold.co/800x400/e2e8f0/64748b?text=WebOS',
   },
 ]
 
@@ -43,6 +47,7 @@ export const mockProfile: Profile = {
   name: 'TUDO',
   title: '全栈开发者 / 大三学生',
   avatar_emoji: '',
+  avatar_url: 'https://placehold.co/200x200/3b82f6/ffffff?text=T',
   bio: '热爱编程、设计和一切有趣的技术。目前正在学习企业级 Web 开发，专注于 Vue 3、Go 和云原生技术。喜欢将创意转化为实际的产品，追求代码质量与用户体验的平衡。',
   tags: ['Vue 3', 'TypeScript', 'Go', 'Tailwind CSS', 'Docker', 'Linux'],
 }

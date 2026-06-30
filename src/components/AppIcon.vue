@@ -10,6 +10,7 @@
 import type { AppDefinition, Position } from '../types'
 import * as LucideIcons from 'lucide-vue-next'
 import { computed, ref, h } from 'vue'
+import { appSettings } from '../store'
 
 const props = defineProps<{
   app: AppDefinition
@@ -36,6 +37,15 @@ function snapToGrid(pos: Position): Position {
 
 // ============ 图标渲染 ============
 
+/** 自定义图标图片 URL（store 中的优先，其次 app.imageUrl） */
+const customIconUrl = computed(() => {
+  return appSettings.appIcons[props.app.id] || props.app.imageUrl || ''
+})
+
+/** 是否有自定义图片图标 */
+const hasCustomIcon = computed(() => !!customIconUrl.value)
+
+/** Lucide 图标组件（无自定义图片时使用） */
 const IconComponent = computed(() => {
   const iconName = props.app.icon as keyof typeof LucideIcons
   return (LucideIcons[iconName] as ReturnType<typeof h>) || LucideIcons.File
@@ -155,7 +165,13 @@ const transitionClass = computed(() => {
       "
     >
       <div class="w-14 h-14 flex items-center justify-center text-white/30">
-        <component :is="IconComponent" :size="40" :stroke-width="1.5" />
+        <img
+          v-if="hasCustomIcon"
+          :src="customIconUrl"
+          class="w-full h-full rounded-lg object-cover opacity-30"
+          draggable="false"
+        />
+        <component v-else :is="IconComponent" :size="40" :stroke-width="1.5" />
       </div>
       <span class="mt-1.5 text-xs text-center text-white/30 leading-tight line-clamp-2 px-1">
         {{ app.title }}
@@ -187,7 +203,13 @@ const transitionClass = computed(() => {
       @dblclick="onDblClick"
     >
       <div class="w-14 h-14 flex items-center justify-center text-white drop-shadow-lg pointer-events-none">
-        <component :is="IconComponent" :size="40" :stroke-width="1.5" />
+        <img
+          v-if="hasCustomIcon"
+          :src="customIconUrl"
+          class="w-full h-full rounded-lg object-cover"
+          draggable="false"
+        />
+        <component v-else :is="IconComponent" :size="40" :stroke-width="1.5" />
       </div>
       <span
         class="

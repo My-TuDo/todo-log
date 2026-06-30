@@ -2,13 +2,11 @@
 /**
  * App.vue - 根组件
  *
- * 负责提供桌面应用的配置数据（快捷方式列表、壁纸）
- * 并渲染 Desktop 组件
+ * 提供桌面应用配置，壁纸由全局 store 管理
  */
 import Desktop from './components/Desktop.vue'
+import { appSettings } from './store'
 import type { AppDefinition } from './types'
-
-// ============ 应用配置 ============
 
 /** 桌面快捷方式列表 */
 const apps: AppDefinition[] = [
@@ -43,11 +41,8 @@ const apps: AppDefinition[] = [
     componentName: 'AdminTerminal',
   },
 ]
-
-/** 桌面壁纸 URL（使用 Unsplash 的高质量图片） */
-const wallpaper = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1920&q=80'
 </script>
 
 <template>
-  <Desktop :apps="apps" :wallpaper="wallpaper" />
+  <Desktop :apps="apps" :wallpaper="appSettings.wallpaper" />
 </template>

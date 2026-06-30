@@ -40,16 +40,15 @@ onMounted(async () => {
     <div v-else-if="profile" class="space-y-4">
       <div class="flex flex-col items-center py-4 space-y-3">
         <!-- 头像 -->
-        <div
-          class="
-            w-20 h-20 rounded-full
-            bg-gradient-to-br from-blue-400 to-purple-500
-            flex items-center justify-center
-            text-3xl text-white
-            shadow-lg
-          "
-        >
-          {{ profile.name ? profile.name.charAt(0).toUpperCase() : '?' }}
+        <div class="w-20 h-20 rounded-full overflow-hidden bg-gray-100 shadow-lg flex items-center justify-center">
+          <img
+            v-if="profile.avatar_url"
+            :src="profile.avatar_url"
+            class="w-full h-full object-cover"
+          />
+          <span v-else class="text-2xl text-gray-400 font-semibold">
+            {{ profile.name ? profile.name.charAt(0).toUpperCase() : '?' }}
+          </span>
         </div>
         <div class="text-center">
           <h3 class="text-lg font-semibold text-gray-800">{{ profile.name }}</h3>

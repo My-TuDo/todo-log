@@ -14,6 +14,8 @@ export interface AppDefinition {
   icon: string
   /** 对应的窗口组件名称，用于动态组件查找 */
   componentName: string
+  /** 自定义图标图片 URL（优先级高于 Lucide 图标） */
+  imageUrl?: string
 }
 
 // ============================================================
@@ -73,6 +75,8 @@ export interface Article {
   summary: string
   created_at: string
   views: number
+  /** 文章配图 URL */
+  image_url?: string
 }
 
 /** 个人简介 */
@@ -80,6 +84,8 @@ export interface Profile {
   name: string
   title: string
   avatar_emoji: string
+  /** 头像图片 URL（优先级高于 avatar_emoji） */
+  avatar_url?: string
   bio: string
   tags: string[]
 }

@@ -22,7 +22,27 @@ import {
   fetchContacts,
   updateContacts,
 } from '../../services/api'
-import type { Article, Project, Profile, ContactItem } from '../../types'
+import { appSettings, setWallpaper, setAppIcon } from '../../store'
+import type { Article, Project, Profile, ContactItem, AppDefinition } from '../../types'
+
+/** 壁纸预设 */
+const wallpapers = [
+  { url: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1920&q=80', name: '山水' },
+  { url: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=1920&q=80', name: '星空' },
+  { url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80', name: '极光' },
+  { url: 'https://images.unsplash.com/photo-1470071459604-7b8ec44ffd4b?w=1920&q=80', name: '森林' },
+  { url: 'https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?w=1920&q=80', name: '湖畔' },
+  { url: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=1920&q=80', name: '山川' },
+]
+
+/** 快捷方式列表（用于外观设置中的图标配置） */
+const apps: AppDefinition[] = [
+  { id: 'articles', title: '我的文章.app', icon: 'FileText', componentName: 'ArticleList' },
+  { id: 'about', title: '关于我.app', icon: 'User', componentName: 'AboutMe' },
+  { id: 'projects', title: '项目展示.app', icon: 'FolderGit2', componentName: 'Projects' },
+  { id: 'contact', title: '联系我.app', icon: 'Mail', componentName: 'Contact' },
+  { id: 'admin', title: '后台管理.app', icon: 'Terminal', componentName: 'AdminTerminal' },
+]
 
 // ============================================================
 // 认证
@@ -60,7 +80,7 @@ function handleLogout() {
 // 导航
 // ============================================================
 
-type Tab = 'articles' | 'projects' | 'profile' | 'contacts'
+type Tab = 'articles' | 'projects' | 'profile' | 'contacts' | 'appearance'
 const activeTab = ref<Tab>('articles')
 
 const tabs: { id: Tab; label: string }[] = [
@@ -68,6 +88,7 @@ const tabs: { id: Tab; label: string }[] = [
   { id: 'projects', label: '项目管理' },
   { id: 'profile', label: '个人资料' },
   { id: 'contacts', label: '联系方式' },
+  { id: 'appearance', label: '外观设置' },
 ]
 
 // ============================================================
@@ -427,6 +448,57 @@ const activeTabComputed = computed({
             <button class="w-full py-1.5 rounded bg-gray-900 hover:bg-gray-800 text-white text-xs font-medium transition-all disabled:opacity-50" :disabled="contactsLoading" @click="handleSaveContacts">
               {{ contactsLoading ? '保存中...' : '保存修改' }}
             </button>
+          </div>
+        </div>
+
+        <!-- ===== 外观设置 ===== -->
+        <div v-else-if="activeTab === 'appearance'" class="max-w-lg space-y-4">
+          <h2 class="text-sm font-semibold text-gray-800">外观设置</h2>
+
+          <!-- 桌面壁纸 -->
+          <div class="p-4 rounded-lg bg-white border border-gray-200 space-y-3">
+            <label class="block text-xs text-gray-500 font-medium">桌面壁纸</label>
+            <div class="flex gap-2">
+              <input
+                :value="appSettings.wallpaper"
+                @input="(e: any) => setWallpaper(e.target.value)"
+                placeholder="输入图片 URL"
+                class="flex-1 px-2.5 py-1.5 rounded border border-gray-200 bg-gray-50 text-xs outline-none focus:border-blue-400 font-mono"
+              />
+            </div>
+            <div class="w-full h-24 rounded-lg overflow-hidden bg-gray-100 border border-gray-100">
+              <img
+                :src="appSettings.wallpaper"
+                class="w-full h-full object-cover"
+                @error="(e: any) => e.target.style.display = 'none'"
+              />
+            </div>
+            <div class="flex gap-1.5 flex-wrap">
+              <button
+                v-for="preset in wallpapers"
+                :key="preset.url"
+                class="w-12 h-8 rounded border-2 overflow-hidden transition-all"
+                :class="appSettings.wallpaper === preset.url ? 'border-blue-400' : 'border-transparent hover:border-gray-300'"
+                @click="setWallpaper(preset.url)"
+              >
+                <img :src="preset.url" class="w-full h-full object-cover" />
+              </button>
+            </div>
+          </div>
+
+          <!-- 应用图标 -->
+          <div class="p-4 rounded-lg bg-white border border-gray-200 space-y-3">
+            <label class="block text-xs text-gray-500 font-medium">应用图标</label>
+            <p class="text-[10px] text-gray-300">设置图片 URL 后桌面图标将替换为自定义图片</p>
+            <div v-for="app in apps" :key="app.id" class="flex items-center gap-2">
+              <span class="text-xs text-gray-500 w-16 shrink-0 truncate">{{ app.title.replace('.app', '') }}</span>
+              <input
+                :value="appSettings.appIcons[app.id] || ''"
+                @input="(e: any) => setAppIcon(app.id, e.target.value)"
+                placeholder="图片 URL（留空使用默认图标）"
+                class="flex-1 px-2 py-1 rounded border border-gray-200 bg-gray-50 text-[10px] outline-none focus:border-blue-400 font-mono"
+              />
+            </div>
           </div>
         </div>
       </div>
