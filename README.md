@@ -8,6 +8,8 @@
 
 后端使用 Go + Gin 框架，提供 RESTful API，当前使用 Mock 数据层，可无缝切换到真实后端。
 
+前端使用 vibe coding 构建，后端作为本人学习用。
+
 ## 核心特性
 
 ### 前端
@@ -139,7 +141,7 @@ go run .         # http://localhost:8080
         ├── AboutMe.vue      # 关于我
         ├── Projects.vue     # 项目展示
         └── Contact.vue      # 联系方式
-```
+
 
 ## 🧩 核心类型
 
@@ -164,14 +166,6 @@ interface WindowState {
   isClosing: boolean
 }
 ```
-
-## 📌 待办
-
-- [ ] 对接 Go 后端 API
-- [ ] 窗口最小化/最大化功能
-- [ ] Dock 任务栏
-- [ ] 右键菜单
-- [ ] 桌面文件拖拽
 
 ---
 
