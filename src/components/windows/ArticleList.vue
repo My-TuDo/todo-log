@@ -24,7 +24,7 @@ onMounted(async () => {
 
 <template>
   <div class="space-y-4">
-    <h2 class="text-xl font-bold text-gray-800">📝 我的文章</h2>
+    <h2 class="text-xl font-bold text-gray-800">我的文章</h2>
     <p class="text-sm text-gray-500">这里展示你的博客文章列表</p>
 
     <!-- 加载状态 -->
@@ -52,8 +52,8 @@ onMounted(async () => {
         <h3 class="font-medium text-gray-800">{{ article.title }}</h3>
         <p class="text-xs text-gray-500 mt-1">{{ article.summary }}</p>
         <div class="flex items-center gap-3 mt-2 text-xs text-gray-400">
-          <span>📅 {{ article.created_at }}</span>
-          <span>👁️ {{ article.views }} 次阅读</span>
+          <span>{{ article.created_at }}</span>
+          <span>{{ article.views }} 次阅读</span>
         </div>
       </div>
     </div>

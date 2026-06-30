@@ -24,7 +24,7 @@ onMounted(async () => {
 
 <template>
   <div class="space-y-4">
-    <h2 class="text-xl font-bold text-gray-800">👤 关于我</h2>
+    <h2 class="text-xl font-bold text-gray-800">关于我</h2>
 
     <!-- 加载状态 -->
     <div v-if="loading" class="flex items-center justify-center py-8 text-gray-400">
@@ -49,7 +49,7 @@ onMounted(async () => {
             shadow-lg
           "
         >
-          {{ profile.avatar_emoji }}
+          {{ profile.name ? profile.name.charAt(0).toUpperCase() : '?' }}
         </div>
         <div class="text-center">
           <h3 class="text-lg font-semibold text-gray-800">{{ profile.name }}</h3>

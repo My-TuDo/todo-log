@@ -71,8 +71,8 @@ export const mockProjects: Project[] = [
 
 /** Mock 联系信息 */
 export const mockContacts: ContactItem[] = [
-  { icon: '📧', label: '电子邮箱', value: 'tudo@example.com' },
-  { icon: '💬', label: '微信', value: 'TUDO_dev' },
-  { icon: '🐙', label: 'GitHub', value: '@tudo-dev' },
-  { icon: '📱', label: '手机', value: '+86 138-0000-0000' },
+  { icon: '@', label: '电子邮箱', value: 'tudo@example.com' },
+  { icon: '#', label: '微信', value: 'TUDO_dev' },
+  { icon: '*', label: 'GitHub', value: '@tudo-dev' },
+  { icon: '+', label: '手机', value: '+86 138-0000-0000' },
 ]

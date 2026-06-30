@@ -24,7 +24,7 @@ onMounted(async () => {
 
 <template>
   <div class="space-y-4">
-    <h2 class="text-xl font-bold text-gray-800">💻 项目展示</h2>
+    <h2 class="text-xl font-bold text-gray-800">项目展示</h2>
     <p class="text-sm text-gray-500">这里展示你的个人项目</p>
 
     <!-- 加载状态 -->

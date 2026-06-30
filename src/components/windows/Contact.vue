@@ -24,7 +24,7 @@ onMounted(async () => {
 
 <template>
   <div class="space-y-4">
-    <h2 class="text-xl font-bold text-gray-800">📬 联系我</h2>
+    <h2 class="text-xl font-bold text-gray-800">联系我</h2>
     <p class="text-sm text-gray-500">欢迎通过以下方式与我取得联系</p>
 
     <!-- 加载状态 -->
@@ -49,7 +49,7 @@ onMounted(async () => {
         :key="i"
         class="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors border border-gray-100"
       >
-        <span class="text-xl">{{ item.icon }}</span>
+        <span class="text-xs text-gray-300 font-mono w-6 text-center shrink-0">{{ item.icon }}</span>
         <div>
           <p class="text-xs text-gray-400">{{ item.label }}</p>
           <p class="text-sm text-gray-700">{{ item.value }}</p>
