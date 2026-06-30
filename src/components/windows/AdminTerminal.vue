@@ -4,35 +4,41 @@
  *
  * 仿 macOS Terminal 风格的管理控制台
  * 通过命令行的方式管理文章、项目、个人资料等内容
- *
- * 你需要在后端实现以下 API：
- *   POST   /api/login              → { "token": "..." }
- *   POST   /api/articles           → 创建文章
- *   DELETE /api/articles/:id       → 删除文章
- *   POST   /api/projects           → 创建项目
- *   DELETE /api/projects/:id       → 删除项目
- *   PUT    /api/profile            → 更新个人资料
- *   PUT    /api/contact            → 更新联系方式
+ * 所有数据操作通过 API 服务层完成，支持 Mock 数据
  */
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, nextTick, onMounted, computed } from 'vue'
+import {
+  login as apiLogin,
+  fetchArticles,
+  createArticle,
+  deleteArticle,
+  fetchProjects,
+  createProject,
+  deleteProject,
+  fetchProfile,
+  updateProfile,
+  fetchContacts,
+  updateContacts,
+} from '../../services/api'
+import type { Article, Project } from '../../types'
 
 // ============ 终端状态 ============
 
-/** 终端输出的所有行 */
 const lines = ref<string[]>([])
-/** 当前输入内容 */
 const input = ref('')
-/** 输入框引用（用于自动聚焦） */
 const inputRef = ref<HTMLInputElement | null>(null)
-/** 终端容器引用（用于自动滚动到底部） */
 const terminalRef = ref<HTMLDivElement | null>(null)
-/** 是否已登录 */
 const isLoggedIn = ref(false)
-/** 认证 token */
 const token = ref('')
-/** 命令历史（上下键切换） */
 const history = ref<string[]>([])
 const historyIndex = ref(-1)
+
+/** 是否处于交互式输入模式（输入内容非命令，而是表单字段值） */
+const interactiveMode = ref(false)
+const interactiveFields = ref<string[]>([])
+const interactiveFieldIdx = ref(0)
+const interactiveValues = ref<Record<string, string>>({})
+const interactiveCallback = ref<((values: Record<string, string>) => Promise<void>) | null>(null)
 
 // ============ 初始化 ============
 
@@ -68,23 +74,26 @@ function scrollToBottom() {
 async function handleCommand() {
   const cmd = input.value.trim()
   input.value = ''
+
+  // 交互式输入模式
+  if (interactiveMode.value) {
+    await handleInteractiveInput(cmd)
+    return
+  }
+
   if (!cmd) return
 
-  // 记录命令到历史
   history.value.push(cmd)
   historyIndex.value = -1
 
-  // 在终端中回显命令
   const lastLine = lines.value[lines.value.length - 1]
   lines.value[lines.value.length - 1] = lastLine + cmd
 
-  // 解析命令
   const parts = cmd.split(/\s+/)
   const command = parts[0].toLowerCase()
   const args = parts.slice(1)
 
   await executeCommand(command, args)
-
   scrollToBottom()
 }
 
@@ -101,6 +110,43 @@ async function executeCommand(command: string, args: string[]) {
     default:
       printLine(`未知命令: ${command}，输入 "help" 查看可用命令`)
       printPrompt()
+  }
+}
+
+// ============ 交互式输入 ============
+
+/** 启动交互式输入模式 */
+function startInteractiveInput(fields: string[], cb: (values: Record<string, string>) => Promise<void>) {
+  interactiveMode.value = true
+  interactiveFields.value = fields
+  interactiveFieldIdx.value = 0
+  interactiveValues.value = {}
+  interactiveCallback.value = cb
+  printLine('')
+  printLine(`请输入 ${fields[0]}（输入 "cancel" 取消）:`)
+}
+
+async function handleInteractiveInput(value: string) {
+  if (value.toLowerCase() === 'cancel') {
+    printLine('已取消')
+    interactiveMode.value = false
+    printPrompt()
+    return
+  }
+
+  const fieldName = interactiveFields.value[interactiveFieldIdx.value]
+  interactiveValues.value[fieldName] = value
+  interactiveFieldIdx.value++
+
+  if (interactiveFieldIdx.value >= interactiveFields.value.length) {
+    // 所有字段收集完毕
+    interactiveMode.value = false
+    if (interactiveCallback.value) {
+      await interactiveCallback.value(interactiveValues.value)
+    }
+    printPrompt()
+  } else {
+    printLine(`请输入 ${interactiveFields.value[interactiveFieldIdx.value]}（输入 "cancel" 取消）:`)
   }
 }
 
@@ -142,25 +188,14 @@ async function cmdLogin(args: string[]) {
   }
 
   try {
-    const res = await fetch('http://localhost:8080/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: args[0] }),
-    })
-
-    if (!res.ok) {
-      printLine('认证失败: 密码错误')
-      printPrompt()
-      return
-    }
-
-    const data = await res.json()
-    token.value = data.token
+    const res = await apiLogin(args[0])
+    token.value = res.token
     isLoggedIn.value = true
     printLine('✓ 登录成功，欢迎回来')
     printPrompt()
-  } catch {
-    printLine('错误: 无法连接到后端服务')
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : '无法连接到后端服务'
+    printLine(`认证失败: ${msg}`)
     printPrompt()
   }
 }
@@ -176,8 +211,7 @@ async function cmdArticles() {
   if (!isLoggedIn.value) { printLine('请先登录: login <password>'); printPrompt(); return }
 
   try {
-    const res = await fetch('http://localhost:8080/api/articles')
-    const articles = await res.json()
+    const articles = await fetchArticles()
 
     if (articles.length === 0) {
       printLine('暂无文章')
@@ -214,38 +248,14 @@ async function cmdArticle(args: string[]) {
   const sub = args[0].toLowerCase()
 
   if (sub === 'create') {
-    // 交互式创建 —— 提示用户输入
-    printLine('请输入文章信息:')
-    printLine('')
-
-    // 用一个简单粗暴的方式：弹三个问题
-    const title = prompt('标题: ')
-    const summary = prompt('摘要: ')
-    if (!title || !summary) {
-      printLine('取消创建')
-      printPrompt()
-      return
-    }
-
-    try {
-      const res = await fetch('http://localhost:8080/api/articles', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token.value}`,
-        },
-        body: JSON.stringify({ title, summary }),
-      })
-
-      if (res.ok) {
-        printLine(`✓ 文章「${title}」创建成功`)
-      } else {
+    startInteractiveInput(['标题', '摘要'], async (values) => {
+      try {
+        await createArticle(values['标题'], values['摘要'], token.value)
+        printLine(`✓ 文章「${values['标题']}」创建成功`)
+      } catch {
         printLine('创建失败')
       }
-    } catch {
-      printLine('错误: 无法连接到后端')
-    }
-    printPrompt()
+    })
     return
   }
 
@@ -254,18 +264,10 @@ async function cmdArticle(args: string[]) {
     if (!id) { printLine('用法: article delete <id>'); printPrompt(); return }
 
     try {
-      const res = await fetch(`http://localhost:8080/api/articles/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token.value}` },
-      })
-
-      if (res.ok) {
-        printLine(`✓ 文章 #${id} 已删除`)
-      } else {
-        printLine('删除失败: 文章不存在或无权操作')
-      }
+      await deleteArticle(Number(id), token.value)
+      printLine(`✓ 文章 #${id} 已删除`)
     } catch {
-      printLine('错误: 无法连接到后端')
+      printLine('删除失败: 文章不存在或无权操作')
     }
     printPrompt()
     return
@@ -279,8 +281,7 @@ async function cmdProjects() {
   if (!isLoggedIn.value) { printLine('请先登录: login <password>'); printPrompt(); return }
 
   try {
-    const res = await fetch('http://localhost:8080/api/projects')
-    const projects = await res.json()
+    const projects = await fetchProjects()
 
     if (projects.length === 0) {
       printLine('暂无项目')
@@ -317,30 +318,14 @@ async function cmdProject(args: string[]) {
   const sub = args[0].toLowerCase()
 
   if (sub === 'create') {
-    const name = prompt('项目名称: ')
-    const desc = prompt('项目描述: ')
-    const tech = prompt('技术栈: ')
-    if (!name) { printLine('取消创建'); printPrompt(); return }
-
-    try {
-      const res = await fetch('http://localhost:8080/api/projects', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token.value}`,
-        },
-        body: JSON.stringify({ name, description: desc, tech }),
-      })
-
-      if (res.ok) {
-        printLine(`✓ 项目「${name}」创建成功`)
-      } else {
+    startInteractiveInput(['项目名称', '项目描述', '技术栈'], async (values) => {
+      try {
+        await createProject(values['项目名称'], values['项目描述'], values['技术栈'], token.value)
+        printLine(`✓ 项目「${values['项目名称']}」创建成功`)
+      } catch {
         printLine('创建失败')
       }
-    } catch {
-      printLine('错误: 无法连接到后端')
-    }
-    printPrompt()
+    })
     return
   }
 
@@ -349,18 +334,10 @@ async function cmdProject(args: string[]) {
     if (!id) { printLine('用法: project delete <id>'); printPrompt(); return }
 
     try {
-      const res = await fetch(`http://localhost:8080/api/projects/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token.value}` },
-      })
-
-      if (res.ok) {
-        printLine(`✓ 项目 #${id} 已删除`)
-      } else {
-        printLine('删除失败')
-      }
+      await deleteProject(Number(id), token.value)
+      printLine(`✓ 项目 #${id} 已删除`)
     } catch {
-      printLine('错误: 无法连接到后端')
+      printLine('删除失败')
     }
     printPrompt()
     return
@@ -373,6 +350,8 @@ async function cmdProject(args: string[]) {
 // ============ 键盘事件 ============
 
 function onKeydown(e: KeyboardEvent) {
+  if (interactiveMode.value) return // 交互模式下禁用历史切换
+
   if (e.key === 'ArrowUp') {
     e.preventDefault()
     if (history.value.length === 0) return
@@ -414,7 +393,7 @@ function focusInput() {
       <span v-else-if="line.startsWith('  ID') || line.startsWith('  ──')" class="text-gray-500">
         {{ line }}
       </span>
-      <span v-else-if="line.startsWith('  ') || line.startsWith('未知') || line.startsWith('错误') || line.startsWith('请先')" class="text-gray-400">
+      <span v-else-if="!line.startsWith('✓') && !line.startsWith('认证') && !line.startsWith('⏣') && !line.startsWith(' type') && !line.startsWith('─') && (line.startsWith('  ') || line.startsWith('未知') || line.startsWith('错误') || line.startsWith('请先') || line.startsWith('已取消') || line.startsWith('请输入'))" class="text-gray-400">
         {{ line }}
       </span>
       <span v-else-if="line.startsWith('✓')" class="text-green-400">
@@ -423,13 +402,16 @@ function focusInput() {
       <span v-else-if="line.startsWith('认证失败')" class="text-red-400">
         {{ line }}
       </span>
+      <span v-else-if="line.startsWith('请输入')" class="text-yellow-400/80">
+        {{ line }}
+      </span>
       <span v-else>{{ line }}</span>
     </div>
 
     <!-- 输入行 -->
     <div class="flex items-center gap-1">
-      <span class="text-green-400/70 shrink-0">
-        {{ isLoggedIn ? '[admin@todo-blog ~]$' : '[guest@todo-blog ~]$' }}
+      <span class="text-green-400/70 shrink-0 whitespace-nowrap">
+        {{ interactiveMode ? '>' : isLoggedIn ? '[admin@todo-blog ~]$' : '[guest@todo-blog ~]$' }}
       </span>
       <input
         ref="inputRef"

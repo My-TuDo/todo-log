@@ -1,9 +1,10 @@
 import type { Component } from 'vue'
 
-/**
- * 桌面应用定义（快捷方式元数据）
- * 用于配置桌面上的图标和对应的窗口内容
- */
+// ============================================================
+// 桌面应用定义
+// ============================================================
+
+/** 桌面应用定义（快捷方式元数据） */
 export interface AppDefinition {
   /** 唯一标识 */
   id: string
@@ -15,22 +16,24 @@ export interface AppDefinition {
   componentName: string
 }
 
-/** 窗口在桌面上的位置 */
+// ============================================================
+// 窗口系统类型
+// ============================================================
+
 export interface Position {
   x: number
   y: number
 }
 
-/** 窗口尺寸 */
 export interface Size {
   width: number
   height: number
 }
 
-/**
- * 窗口运行时状态
- * 每个打开的窗口对应一个 WindowState 实例
- */
+/** 窗口显示模式 */
+export type WindowMode = 'normal' | 'maximized' | 'minimized'
+
+/** 窗口运行时状态 */
 export interface WindowState {
   /** 窗口唯一标识 */
   id: string
@@ -46,9 +49,63 @@ export interface WindowState {
   position: Position
   /** 窗口尺寸 */
   size: Size
+  /** 显示模式 */
+  mode: WindowMode
   /** 是否正在播放关闭动画 */
   isClosing: boolean
+  /** 最大化前保存的位置（用于还原） */
+  previousPosition?: Position
+  /** 最大化前保存的尺寸（用于还原） */
+  previousSize?: Size
 }
 
 /** 动态组件映射表：componentName -> Vue 组件 */
 export type ComponentMap = Record<string, Component>
+
+// ============================================================
+// 业务数据类型（统一集中管理）
+// ============================================================
+
+/** 文章 */
+export interface Article {
+  id: number
+  title: string
+  summary: string
+  created_at: string
+  views: number
+}
+
+/** 个人简介 */
+export interface Profile {
+  name: string
+  title: string
+  avatar_emoji: string
+  bio: string
+  tags: string[]
+}
+
+/** 项目 */
+export interface Project {
+  id: number
+  name: string
+  description: string
+  tech: string
+}
+
+/** 联系方式 */
+export interface ContactItem {
+  icon: string
+  label: string
+  value: string
+}
+
+/** 登录响应 */
+export interface LoginResponse {
+  token: string
+}
+
+/** API 通用错误响应 */
+export interface ApiError {
+  error: string
+  message?: string
+}

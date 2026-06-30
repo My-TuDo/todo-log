@@ -5,7 +5,7 @@
  * 功能：
  * - 固定在屏幕底部中央
  * - 显示所有已打开窗口的图标
- * - 最小化的窗口图标显示为半透明
+ * - 最小化（minimized）的窗口图标显示为半透明 + 无指示点
  * - 点击图标还原/聚焦窗口
  * - 毛玻璃背景，悬浮放大效果
  */
@@ -30,7 +30,7 @@ const dockItems = computed(() => {
       id: win.id,
       title: win.title,
       icon: win.icon,
-      isMinimized: win.isMinimized,
+      isMinimized: win.mode === 'minimized',
     }
   })
 })
@@ -65,7 +65,7 @@ function getIcon(iconName: string) {
         hover:scale-110 hover:bg-white/10
         active:scale-95
       "
-      :class="{ 'opacity-50': item.isMinimized }"
+      :class="{ 'opacity-40': item.isMinimized }"
       @click="emit('restore', item.id)"
       :title="item.title"
     >

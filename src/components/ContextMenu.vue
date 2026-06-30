@@ -6,8 +6,9 @@
  * - 在右键点击位置弹出
  * - 支持"新建文章"等快捷操作
  * - 点击菜单项或点击外部关闭
+ * - 自动吸附屏幕边缘，避免溢出
  */
-import { onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 
 const props = defineProps<{
   x: number
@@ -16,7 +17,21 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
+  openApp: [appId: string]
 }>()
+
+const MENU_WIDTH = 180
+const MENU_HEIGHT = 160
+
+/** 计算菜单位置，防止溢出屏幕 */
+const menuStyle = computed(() => {
+  const maxX = window.innerWidth - MENU_WIDTH - 8
+  const maxY = window.innerHeight - MENU_HEIGHT - 8
+  return {
+    left: Math.min(props.x, maxX) + 'px',
+    top: Math.min(props.y, maxY) + 'px',
+  }
+})
 
 function handleClickOutside() {
   emit('close')
@@ -25,7 +40,7 @@ function handleClickOutside() {
 function handleMenuItem(action: string) {
   switch (action) {
     case 'new-article':
-      window.open('http://localhost:5173', '_blank')
+      emit('openApp', 'admin')
       break
     case 'refresh':
       window.location.reload()
@@ -35,7 +50,6 @@ function handleMenuItem(action: string) {
 }
 
 onMounted(() => {
-  // 点击菜单外部关闭
   setTimeout(() => {
     document.addEventListener('click', handleClickOutside)
   }, 0)
@@ -49,7 +63,7 @@ onUnmounted(() => {
 <template>
   <div
     class="fixed z-[9999]"
-    :style="{ left: x + 'px', top: y + 'px' }"
+    :style="menuStyle"
     @click.stop
   >
     <div

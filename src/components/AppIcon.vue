@@ -5,16 +5,18 @@
  * 功能：
  * - 显示应用图标（Lucide）+ 文字标签
  * - 悬浮时放大 + 阴影效果
- * - 单击触发打开窗口逻辑
+ * - 单击触发打开窗口逻辑（emit open 事件）
  */
 import type { AppDefinition } from '../types'
 import * as LucideIcons from 'lucide-vue-next'
-import { computed } from 'vue'
-import { h } from 'vue'
+import { computed, h } from 'vue'
 
 const props = defineProps<{
   app: AppDefinition
-  onOpen: () => void
+}>()
+
+const emit = defineEmits<{
+  open: []
 }>()
 
 // 根据 icon 名称动态获取 Lucide 图标组件
@@ -38,7 +40,7 @@ const IconComponent = computed(() => {
       active:scale-95
       p-2
     "
-    @click="onOpen"
+    @dblclick="emit('open')"
   >
     <!-- 图标 -->
     <div class="w-14 h-14 flex items-center justify-center text-white drop-shadow-lg">
