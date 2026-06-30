@@ -59,6 +59,41 @@ const componentMap: ComponentMap = {
 /** 右键菜单状态 */
 const contextMenu = ref<{ x: number; y: number } | null>(null)
 
+// ============ 桌面图标位置管理 ============
+
+/** 每个桌面图标的位置（id -> Position），使用 transform 渲染 */
+const iconPositions = ref<Record<string, Position>>({})
+
+/** 网格布局参数 */
+const GRID_COLS = 1           // 每列数（垂直排列时为1）
+const ICON_WIDTH = 96         // 图标宽度 w-24 = 96px
+const ICON_HEIGHT = 112       // 图标高度 h-28 = 112px
+const GRID_GAP = 4            // 间距 gap-1 = 4px
+const GRID_OFFSET_X = 24      // 距左边界 top-6 = 24px
+const GRID_OFFSET_Y = 24      // 距上边界 left-6 = 24px
+
+/** 初始化/重置图标位置为网格布局 */
+function initIconPositions() {
+  const positions: Record<string, Position> = {}
+  apps.forEach((app, index) => {
+    const col = index % GRID_COLS
+    const row = Math.floor(index / GRID_COLS)
+    positions[app.id] = {
+      x: GRID_OFFSET_X + col * (ICON_WIDTH + GRID_GAP),
+      y: GRID_OFFSET_Y + row * (ICON_HEIGHT + GRID_GAP),
+    }
+  })
+  iconPositions.value = positions
+}
+
+/** 更新某个图标的位置（拖拽完成后调用） */
+function updateIconPosition(id: string, position: Position) {
+  iconPositions.value[id] = position
+}
+
+// 初始化位置
+initIconPositions()
+
 // ============ 窗口操作方法 ============
 
 /**
@@ -226,15 +261,15 @@ function handleContextMenuOpenApp(appId: string) {
     }"
     @contextmenu="handleContextMenu"
   >
-    <!-- 桌面图标网格 -->
-    <div class="absolute top-6 left-6 flex flex-col flex-wrap gap-1 max-h-[calc(100vh-120px)]">
-      <AppIcon
-        v-for="app in apps"
-        :key="app.id"
-        :app="app"
-        @open="openApp(app)"
-      />
-    </div>
+    <!-- 桌面图标层（绝对定位，支持拖拽） -->
+    <AppIcon
+      v-for="app in apps"
+      :key="app.id"
+      :app="app"
+      :position="iconPositions[app.id] ?? { x: 0, y: 0 }"
+      @open="openApp(app)"
+      @position-change="(pos: Position) => updateIconPosition(app.id, pos)"
+    />
 
     <!-- 窗口层 -->
     <Window
