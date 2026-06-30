@@ -75,7 +75,7 @@ const GRID_OFFSET_Y = 24      // 距上边界 left-6 = 24px
 /** 初始化/重置图标位置为网格布局 */
 function initIconPositions() {
   const positions: Record<string, Position> = {}
-  apps.forEach((app, index) => {
+  props.apps.forEach((app, index) => {
     const col = index % GRID_COLS
     const row = Math.floor(index / GRID_COLS)
     positions[app.id] = {
@@ -244,7 +244,7 @@ function closeContextMenu() {
 /** 右键菜单 → 打开指定应用 */
 function handleContextMenuOpenApp(appId: string) {
   closeContextMenu()
-  const app = apps.find((a) => a.id === appId)
+  const app = props.apps.find((a) => a.id === appId)
   if (app) openApp(app)
 }
 </script>
