@@ -80,14 +80,14 @@ onUnmounted(() => {
         class="w-full flex items-center gap-3 px-4 py-2 hover:bg-blue-500 hover:text-white transition-colors text-left"
         @click="handleMenuItem('new-article')"
       >
-        <span>📝</span>
+        <span class="text-xs text-gray-400 w-5">+</span>
         <span>新建文章</span>
       </button>
       <button
         class="w-full flex items-center gap-3 px-4 py-2 hover:bg-blue-500 hover:text-white transition-colors text-left"
         @click="handleMenuItem('refresh')"
       >
-        <span>🔄</span>
+        <span class="text-xs text-gray-400 w-5">↻</span>
         <span>刷新桌面</span>
       </button>
       <div class="border-t border-gray-200/60 my-1" />

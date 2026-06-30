@@ -42,7 +42,7 @@ export const mockArticles: Article[] = [
 export const mockProfile: Profile = {
   name: 'TUDO',
   title: '全栈开发者 / 大三学生',
-  avatar_emoji: '🧑‍💻',
+  avatar_emoji: '',
   bio: '热爱编程、设计和一切有趣的技术。目前正在学习企业级 Web 开发，专注于 Vue 3、Go 和云原生技术。喜欢将创意转化为实际的产品，追求代码质量与用户体验的平衡。',
   tags: ['Vue 3', 'TypeScript', 'Go', 'Tailwind CSS', 'Docker', 'Linux'],
 }
