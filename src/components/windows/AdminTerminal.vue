@@ -2,11 +2,14 @@
 /**
  * AdminTerminal.vue - "后台管理.app" 窗口内容
  *
- * 仿 macOS Terminal 风格的管理控制台
- * 通过命令行的方式管理文章、项目、个人资料等内容
- * 所有数据操作通过 API 服务层完成，支持 Mock 数据
+ * 图形化后台管理界面
+ * - 文章管理：列表查看、创建、删除
+ * - 项目管理：列表查看、创建、删除
+ * - 个人资料：查看与编辑
+ * - 联系方式：查看与编辑
+ * - 所有数据通过 API 服务层操作，支持 Mock 数据
  */
-import { ref, nextTick, onMounted, computed } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import {
   login as apiLogin,
   fetchArticles,
@@ -20,411 +23,517 @@ import {
   fetchContacts,
   updateContacts,
 } from '../../services/api'
-import type { Article, Project } from '../../types'
+import type { Article, Project, Profile, ContactItem } from '../../types'
 
-// ============ 终端状态 ============
+// ============================================================
+// 认证状态
+// ============================================================
 
-const lines = ref<string[]>([])
-const input = ref('')
-const inputRef = ref<HTMLInputElement | null>(null)
-const terminalRef = ref<HTMLDivElement | null>(null)
 const isLoggedIn = ref(false)
 const token = ref('')
-const history = ref<string[]>([])
-const historyIndex = ref(-1)
+const loginPassword = ref('')
+const loginError = ref('')
+const loginLoading = ref(false)
 
-/** 是否处于交互式输入模式（输入内容非命令，而是表单字段值） */
-const interactiveMode = ref(false)
-const interactiveFields = ref<string[]>([])
-const interactiveFieldIdx = ref(0)
-const interactiveValues = ref<Record<string, string>>({})
-const interactiveCallback = ref<((values: Record<string, string>) => Promise<void>) | null>(null)
-
-// ============ 初始化 ============
-
-onMounted(() => {
-  printLine('⏣ TUDO\'s Blog 管理终端 v0.1')
-  printLine(' type "help" 查看可用命令')
-  printLine(' type "login <password>" 登录')
-  printLine('─'.repeat(40))
-  printPrompt()
-})
-
-// ============ 终端渲染辅助 ============
-
-function printLine(text: string) {
-  lines.value.push(text)
-}
-
-function printPrompt() {
-  const user = isLoggedIn.value ? 'admin' : 'guest'
-  lines.value.push(`[${user}@todo-blog ~]$ `)
-}
-
-function scrollToBottom() {
-  nextTick(() => {
-    if (terminalRef.value) {
-      terminalRef.value.scrollTop = terminalRef.value.scrollHeight
-    }
-  })
-}
-
-// ============ 命令处理 ============
-
-async function handleCommand() {
-  const cmd = input.value.trim()
-  input.value = ''
-
-  // 交互式输入模式
-  if (interactiveMode.value) {
-    await handleInteractiveInput(cmd)
-    return
-  }
-
-  if (!cmd) return
-
-  history.value.push(cmd)
-  historyIndex.value = -1
-
-  const lastLine = lines.value[lines.value.length - 1]
-  lines.value[lines.value.length - 1] = lastLine + cmd
-
-  const parts = cmd.split(/\s+/)
-  const command = parts[0].toLowerCase()
-  const args = parts.slice(1)
-
-  await executeCommand(command, args)
-  scrollToBottom()
-}
-
-async function executeCommand(command: string, args: string[]) {
-  switch (command) {
-    case 'help':     return cmdHelp()
-    case 'clear':    return cmdClear()
-    case 'login':    return cmdLogin(args)
-    case 'logout':   return cmdLogout()
-    case 'articles': return cmdArticles()
-    case 'article':  return cmdArticle(args)
-    case 'projects': return cmdProjects()
-    case 'project':  return cmdProject(args)
-    default:
-      printLine(`未知命令: ${command}，输入 "help" 查看可用命令`)
-      printPrompt()
-  }
-}
-
-// ============ 交互式输入 ============
-
-/** 启动交互式输入模式 */
-function startInteractiveInput(fields: string[], cb: (values: Record<string, string>) => Promise<void>) {
-  interactiveMode.value = true
-  interactiveFields.value = fields
-  interactiveFieldIdx.value = 0
-  interactiveValues.value = {}
-  interactiveCallback.value = cb
-  printLine('')
-  printLine(`请输入 ${fields[0]}（输入 "cancel" 取消）:`)
-}
-
-async function handleInteractiveInput(value: string) {
-  if (value.toLowerCase() === 'cancel') {
-    printLine('已取消')
-    interactiveMode.value = false
-    printPrompt()
-    return
-  }
-
-  const fieldName = interactiveFields.value[interactiveFieldIdx.value]
-  interactiveValues.value[fieldName] = value
-  interactiveFieldIdx.value++
-
-  if (interactiveFieldIdx.value >= interactiveFields.value.length) {
-    // 所有字段收集完毕
-    interactiveMode.value = false
-    if (interactiveCallback.value) {
-      await interactiveCallback.value(interactiveValues.value)
-    }
-    printPrompt()
-  } else {
-    printLine(`请输入 ${interactiveFields.value[interactiveFieldIdx.value]}（输入 "cancel" 取消）:`)
-  }
-}
-
-// ============ 命令实现 ============
-
-function cmdHelp() {
-  printLine('')
-  printLine('  可用命令:')
-  printLine('  ───────────────────────────────────────────')
-  printLine('  login <password>    登录管理终端')
-  printLine('  logout              退出登录')
-  printLine('  articles            查看所有文章')
-  printLine('  article create      创建文章 (交互式)')
-  printLine('  article delete <id> 删除文章')
-  printLine('  projects            查看所有项目')
-  printLine('  project create      创建项目 (交互式)')
-  printLine('  project delete <id> 删除项目')
-  if (isLoggedIn.value) {
-    printLine('  profile update      更新个人资料 (交互式)')
-    printLine('  contact update      更新联系方式 (交互式)')
-  }
-  printLine('  clear               清屏')
-  printLine('  help                显示此帮助')
-  printLine('  ───────────────────────────────────────────')
-  printLine('')
-  printPrompt()
-}
-
-function cmdClear() {
-  lines.value = []
-  printPrompt()
-}
-
-async function cmdLogin(args: string[]) {
-  if (args.length === 0) {
-    printLine('用法: login <password>')
-    printPrompt()
-    return
-  }
-
+async function handleLogin() {
+  if (!loginPassword.value) return
+  loginLoading.value = true
+  loginError.value = ''
   try {
-    const res = await apiLogin(args[0])
+    const res = await apiLogin(loginPassword.value)
     token.value = res.token
     isLoggedIn.value = true
-    printLine('✓ 登录成功，欢迎回来')
-    printPrompt()
+    loginPassword.value = ''
+    loadAllData()
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : '无法连接到后端服务'
-    printLine(`认证失败: ${msg}`)
-    printPrompt()
+    loginError.value = e instanceof Error ? e.message : '登录失败'
+  } finally {
+    loginLoading.value = false
   }
 }
 
-function cmdLogout() {
-  token.value = ''
+function handleLogout() {
   isLoggedIn.value = false
-  printLine('已退出登录')
-  printPrompt()
+  token.value = ''
 }
 
-async function cmdArticles() {
-  if (!isLoggedIn.value) { printLine('请先登录: login <password>'); printPrompt(); return }
+// ============================================================
+// 标签导航
+// ============================================================
 
+type Tab = 'articles' | 'projects' | 'profile' | 'contacts'
+const activeTab = ref<Tab>('articles')
+
+const tabs: { id: Tab; label: string; icon: string }[] = [
+  { id: 'articles', label: '文章管理', icon: '📝' },
+  { id: 'projects', label: '项目管理', icon: '💻' },
+  { id: 'profile', label: '个人资料', icon: '👤' },
+  { id: 'contacts', label: '联系方式', icon: '📬' },
+]
+
+// ============================================================
+// 数据状态
+// ============================================================
+
+const articles = ref<Article[]>([])
+const projects = ref<Project[]>([])
+const profile = ref<Profile | null>(null)
+const contacts = ref<ContactItem[]>([])
+
+const loading = ref(false)
+const toastMessage = ref('')
+const toastType = ref<'success' | 'error'>('success')
+let toastTimer: ReturnType<typeof setTimeout> | null = null
+
+function showToast(msg: string, type: 'success' | 'error' = 'success') {
+  toastMessage.value = msg
+  toastType.value = type
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => { toastMessage.value = '' }, 2500)
+}
+
+async function loadAllData() {
+  loading.value = true
   try {
-    const articles = await fetchArticles()
-
-    if (articles.length === 0) {
-      printLine('暂无文章')
-      printPrompt()
-      return
-    }
-
-    printLine('')
-    printLine(`  ID  │ 标题                          │ 阅读量`)
-    printLine(`  ────┼───────────────────────────────┼──────`)
-    for (const a of articles) {
-      const id = String(a.id).padEnd(4)
-      const title = (a.title || '').substring(0, 30).padEnd(30)
-      const views = String(a.views).padStart(4)
-      printLine(`  ${id}│ ${title} │ ${views}`)
-    }
-    printLine('')
-    printPrompt()
+    const [a, p, pr, c] = await Promise.all([
+      fetchArticles(),
+      fetchProjects(),
+      fetchProfile(),
+      fetchContacts(),
+    ])
+    articles.value = a
+    projects.value = p
+    profile.value = pr
+    contacts.value = c
   } catch {
-    printLine('错误: 无法获取文章列表')
-    printPrompt()
+    showToast('数据加载失败', 'error')
+  } finally {
+    loading.value = false
   }
 }
 
-async function cmdArticle(args: string[]) {
-  if (!isLoggedIn.value) { printLine('请先登录: login <password>'); printPrompt(); return }
+onMounted(() => {
+  if (isLoggedIn.value) loadAllData()
+})
 
-  if (args.length === 0) {
-    printLine('用法: article create 或 article delete <id>')
-    printPrompt()
-    return
-  }
+// ============================================================
+// 文章管理
+// ============================================================
 
-  const sub = args[0].toLowerCase()
+const showAddArticle = ref(false)
+const newArticle = ref({ title: '', summary: '' })
+const articleLoading = ref(false)
 
-  if (sub === 'create') {
-    startInteractiveInput(['标题', '摘要'], async (values) => {
-      try {
-        await createArticle(values['标题'], values['摘要'], token.value)
-        printLine(`✓ 文章「${values['标题']}」创建成功`)
-      } catch {
-        printLine('创建失败')
-      }
-    })
-    return
-  }
-
-  if (sub === 'delete') {
-    const id = args[1]
-    if (!id) { printLine('用法: article delete <id>'); printPrompt(); return }
-
-    try {
-      await deleteArticle(Number(id), token.value)
-      printLine(`✓ 文章 #${id} 已删除`)
-    } catch {
-      printLine('删除失败: 文章不存在或无权操作')
-    }
-    printPrompt()
-    return
-  }
-
-  printLine(`未知子命令: ${sub}`)
-  printPrompt()
-}
-
-async function cmdProjects() {
-  if (!isLoggedIn.value) { printLine('请先登录: login <password>'); printPrompt(); return }
-
+async function handleCreateArticle() {
+  if (!newArticle.value.title || !newArticle.value.summary) return
+  articleLoading.value = true
   try {
-    const projects = await fetchProjects()
-
-    if (projects.length === 0) {
-      printLine('暂无项目')
-      printPrompt()
-      return
-    }
-
-    printLine('')
-    printLine(`  ID  │ 项目名称                       │ 技术栈`)
-    printLine(`  ────┼───────────────────────────────┼──────────`)
-    for (const p of projects) {
-      const id = String(p.id).padEnd(4)
-      const name = (p.name || '').substring(0, 30).padEnd(30)
-      const tech = (p.tech || '').substring(0, 20)
-      printLine(`  ${id}│ ${name} │ ${tech}`)
-    }
-    printLine('')
-    printPrompt()
+    await createArticle(newArticle.value.title, newArticle.value.summary, token.value)
+    showToast('文章创建成功')
+    newArticle.value = { title: '', summary: '' }
+    showAddArticle.value = false
+    // 刷新列表
+    articles.value = await fetchArticles()
   } catch {
-    printLine('错误: 无法获取项目列表')
-    printPrompt()
+    showToast('创建失败', 'error')
+  } finally {
+    articleLoading.value = false
   }
 }
 
-async function cmdProject(args: string[]) {
-  if (!isLoggedIn.value) { printLine('请先登录: login <password>'); printPrompt(); return }
-
-  if (args.length === 0) {
-    printLine('用法: project create 或 project delete <id>')
-    printPrompt()
-    return
-  }
-
-  const sub = args[0].toLowerCase()
-
-  if (sub === 'create') {
-    startInteractiveInput(['项目名称', '项目描述', '技术栈'], async (values) => {
-      try {
-        await createProject(values['项目名称'], values['项目描述'], values['技术栈'], token.value)
-        printLine(`✓ 项目「${values['项目名称']}」创建成功`)
-      } catch {
-        printLine('创建失败')
-      }
-    })
-    return
-  }
-
-  if (sub === 'delete') {
-    const id = args[1]
-    if (!id) { printLine('用法: project delete <id>'); printPrompt(); return }
-
-    try {
-      await deleteProject(Number(id), token.value)
-      printLine(`✓ 项目 #${id} 已删除`)
-    } catch {
-      printLine('删除失败')
-    }
-    printPrompt()
-    return
-  }
-
-  printLine(`未知子命令: ${sub}`)
-  printPrompt()
-}
-
-// ============ 键盘事件 ============
-
-function onKeydown(e: KeyboardEvent) {
-  if (interactiveMode.value) return // 交互模式下禁用历史切换
-
-  if (e.key === 'ArrowUp') {
-    e.preventDefault()
-    if (history.value.length === 0) return
-    historyIndex.value = Math.max(0, historyIndex.value - 1)
-    input.value = history.value[historyIndex.value] || ''
-  } else if (e.key === 'ArrowDown') {
-    e.preventDefault()
-    if (historyIndex.value === -1) return
-    historyIndex.value++
-    if (historyIndex.value >= history.value.length) {
-      historyIndex.value = -1
-      input.value = ''
-    } else {
-      input.value = history.value[historyIndex.value]
-    }
+async function handleDeleteArticle(id: number) {
+  if (!confirm('确定要删除这篇文文章吗？')) return
+  try {
+    await deleteArticle(id, token.value)
+    showToast('文章已删除')
+    articles.value = await fetchArticles()
+  } catch {
+    showToast('删除失败', 'error')
   }
 }
 
-function focusInput() {
-  inputRef.value?.focus()
+// ============================================================
+// 项目管理
+// ============================================================
+
+const showAddProject = ref(false)
+const newProject = ref({ name: '', description: '', tech: '' })
+const projectLoading = ref(false)
+
+async function handleCreateProject() {
+  if (!newProject.value.name) return
+  projectLoading.value = true
+  try {
+    await createProject(newProject.value.name, newProject.value.description, newProject.value.tech, token.value)
+    showToast('项目创建成功')
+    newProject.value = { name: '', description: '', tech: '' }
+    showAddProject.value = false
+    projects.value = await fetchProjects()
+  } catch {
+    showToast('创建失败', 'error')
+  } finally {
+    projectLoading.value = false
+  }
 }
+
+async function handleDeleteProject(id: number) {
+  if (!confirm('确定要删除这个项目吗？')) return
+  try {
+    await deleteProject(id, token.value)
+    showToast('项目已删除')
+    projects.value = await fetchProjects()
+  } catch {
+    showToast('删除失败', 'error')
+  }
+}
+
+// ============================================================
+// 个人资料编辑
+// ============================================================
+
+const profileForm = ref<Profile>({
+  name: '', title: '', avatar_emoji: '', bio: '', tags: [],
+})
+const profileLoading = ref(false)
+
+function initProfileForm() {
+  if (profile.value) {
+    profileForm.value = { ...profile.value, tags: [...profile.value.tags] }
+  }
+}
+
+async function handleSaveProfile() {
+  profileLoading.value = true
+  try {
+    await updateProfile(profileForm.value, token.value)
+    showToast('个人资料已更新')
+    profile.value = { ...profileForm.value }
+  } catch {
+    showToast('保存失败', 'error')
+  } finally {
+    profileLoading.value = false
+  }
+}
+
+// ============================================================
+// 联系方式编辑
+// ============================================================
+
+const contactsEdit = ref<ContactItem[]>([])
+const contactsLoading = ref(false)
+
+function initContactsForm() {
+  contactsEdit.value = contacts.value.map(c => ({ ...c }))
+}
+
+async function handleSaveContacts() {
+  contactsLoading.value = true
+  try {
+    await updateContacts(contactsEdit.value, token.value)
+    showToast('联系方式已更新')
+    contacts.value = contactsEdit.value.map(c => ({ ...c }))
+  } catch {
+    showToast('保存失败', 'error')
+  } finally {
+    contactsLoading.value = false
+  }
+}
+
+// 切换到编辑相关的 tab 时初始化表单
+const previousTab = ref<Tab>('articles')
+const activeTabComputed = computed({
+  get: () => activeTab.value,
+  set: (val: Tab) => {
+    previousTab.value = activeTab.value
+    activeTab.value = val
+    if (val === 'profile') initProfileForm()
+    if (val === 'contacts') initContactsForm()
+  },
+})
 </script>
 
 <template>
-  <!-- macOS Terminal 风格容器 -->
-  <div
-    ref="terminalRef"
-    class="
-      h-full w-full overflow-y-auto p-3
-      font-mono text-sm leading-relaxed
-      bg-gray-950 text-green-400
-      cursor-text
-    "
-    @click="focusInput"
-  >
-    <!-- 输出行 -->
-    <div v-for="(line, i) in lines" :key="i" class="whitespace-pre-wrap break-all">
-      <span v-if="line.startsWith('[')" class="text-green-400/70">{{ line }}</span>
-      <span v-else-if="line.startsWith('  ID') || line.startsWith('  ──')" class="text-gray-500">
-        {{ line }}
-      </span>
-      <span v-else-if="!line.startsWith('✓') && !line.startsWith('认证') && !line.startsWith('⏣') && !line.startsWith(' type') && !line.startsWith('─') && (line.startsWith('  ') || line.startsWith('未知') || line.startsWith('错误') || line.startsWith('请先') || line.startsWith('已取消') || line.startsWith('请输入'))" class="text-gray-400">
-        {{ line }}
-      </span>
-      <span v-else-if="line.startsWith('✓')" class="text-green-400">
-        {{ line }}
-      </span>
-      <span v-else-if="line.startsWith('认证失败')" class="text-red-400">
-        {{ line }}
-      </span>
-      <span v-else-if="line.startsWith('请输入')" class="text-yellow-400/80">
-        {{ line }}
-      </span>
-      <span v-else>{{ line }}</span>
-    </div>
+  <!-- ============================================================ -->
+  <!-- 登录页面 -->
+  <!-- ============================================================ -->
+  <div v-if="!isLoggedIn" class="h-full w-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+    <div class="w-80 p-8 rounded-2xl bg-white shadow-xl border border-gray-100">
+      <div class="text-center mb-6">
+        <div class="text-4xl mb-2">🔐</div>
+        <h2 class="text-lg font-bold text-gray-800">后台管理</h2>
+        <p class="text-xs text-gray-400 mt-1">请输入密码登录</p>
+      </div>
 
-    <!-- 输入行 -->
-    <div class="flex items-center gap-1">
-      <span class="text-green-400/70 shrink-0 whitespace-nowrap">
-        {{ interactiveMode ? '>' : isLoggedIn ? '[admin@todo-blog ~]$' : '[guest@todo-blog ~]$' }}
-      </span>
-      <input
-        ref="inputRef"
-        v-model="input"
-        class="
-          flex-1 bg-transparent border-none outline-none
-          text-green-400 font-mono text-sm
-          caret-green-400
-        "
-        @keydown.enter="handleCommand"
-        @keydown="onKeydown"
-        autofocus
-      />
+      <form @submit.prevent="handleLogin" class="space-y-4">
+        <div>
+          <input
+            v-model="loginPassword"
+            type="password"
+            placeholder="管理员密码"
+            class="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
+            :class="{ 'border-red-300 ring-1 ring-red-300': loginError }"
+          />
+          <p v-if="loginError" class="text-xs text-red-500 mt-1.5">{{ loginError }}</p>
+        </div>
+        <button
+          type="submit"
+          class="w-full py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          :disabled="loginLoading"
+        >
+          {{ loginLoading ? '登录中...' : '登 录' }}
+        </button>
+      </form>
+
+      <p class="text-center text-xs text-gray-300 mt-4">Mock 模式默认密码: admin123</p>
     </div>
   </div>
+
+  <!-- ============================================================ -->
+  <!-- 管理主界面 -->
+  <!-- ============================================================ -->
+  <div v-else class="h-full w-full flex flex-col bg-gray-50">
+    <!-- 顶部栏 -->
+    <div class="flex items-center justify-between px-5 py-3 bg-white border-b border-gray-200 shrink-0">
+      <div class="flex items-center gap-3">
+        <span class="text-lg">⚙️</span>
+        <h1 class="text-sm font-bold text-gray-800">后台管理</h1>
+        <span class="text-[10px] px-2 py-0.5 rounded-full bg-green-50 text-green-600 border border-green-200">已登录</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="text-xs text-gray-400">admin</span>
+        <button
+          class="px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+          @click="handleLogout"
+        >
+          退出
+        </button>
+      </div>
+    </div>
+
+    <!-- 主体区域 -->
+    <div class="flex-1 flex overflow-hidden">
+      <!-- 侧边导航 -->
+      <div class="w-44 shrink-0 bg-white border-r border-gray-200 p-2 space-y-1">
+        <button
+          v-for="tab in tabs"
+          :key="tab.id"
+          class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-left transition-all"
+          :class="activeTab === tab.id
+            ? 'bg-blue-50 text-blue-700 font-medium'
+            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'"
+          @click="activeTabComputed = tab.id"
+        >
+          <span>{{ tab.icon }}</span>
+          <span>{{ tab.label }}</span>
+        </button>
+      </div>
+
+      <!-- 内容区 -->
+      <div class="flex-1 overflow-y-auto p-5">
+        <!-- 加载中 -->
+        <div v-if="loading" class="flex items-center justify-center h-full text-gray-400 text-sm">
+          <span class="animate-pulse">加载中...</span>
+        </div>
+
+        <!-- ======================== 文章管理 ======================== -->
+        <div v-else-if="activeTab === 'articles'" class="space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-bold text-gray-800">📝 文章管理</h2>
+            <button
+              v-if="!showAddArticle"
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium transition-all"
+              @click="showAddArticle = true"
+            >
+              <span class="text-base leading-none">＋</span>
+              新建文章
+            </button>
+          </div>
+
+          <!-- 新建文章表单 -->
+          <div v-if="showAddArticle" class="p-4 rounded-xl bg-white border border-gray-200 shadow-sm space-y-3">
+            <input
+              v-model="newArticle.title"
+              placeholder="文章标题"
+              class="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+            />
+            <textarea
+              v-model="newArticle.summary"
+              placeholder="文章摘要"
+              rows="3"
+              class="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent resize-none"
+            ></textarea>
+            <div class="flex justify-end gap-2">
+              <button
+                class="px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:bg-gray-100 transition-colors"
+                @click="showAddArticle = false"
+              >取消</button>
+              <button
+                class="px-4 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium transition-all disabled:opacity-50"
+                :disabled="articleLoading || !newArticle.title"
+                @click="handleCreateArticle"
+              >{{ articleLoading ? '创建中...' : '创建' }}</button>
+            </div>
+          </div>
+
+          <!-- 文章列表 -->
+          <div v-if="articles.length === 0" class="py-12 text-center text-gray-400 text-sm">
+            暂无文章，点击"新建文章"开始写作
+          </div>
+          <div v-else class="space-y-2">
+            <div
+              v-for="article in articles"
+              :key="article.id"
+              class="flex items-start gap-3 p-3 rounded-xl bg-white border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all group"
+            >
+              <div class="flex-1 min-w-0">
+                <h3 class="text-sm font-medium text-gray-800 truncate">{{ article.title }}</h3>
+                <p class="text-xs text-gray-400 mt-0.5 line-clamp-1">{{ article.summary }}</p>
+                <div class="flex items-center gap-3 mt-1.5 text-[10px] text-gray-300">
+                  <span>📅 {{ article.created_at }}</span>
+                  <span>👁️ {{ article.views }} 次阅读</span>
+                </div>
+              </div>
+              <button
+                class="shrink-0 px-2 py-1 rounded-md text-[10px] text-red-400 hover:bg-red-50 hover:text-red-600 transition-all opacity-0 group-hover:opacity-100"
+                @click="handleDeleteArticle(article.id)"
+              >删除</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ======================== 项目管理 ======================== -->
+        <div v-else-if="activeTab === 'projects'" class="space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-bold text-gray-800">💻 项目管理</h2>
+            <button
+              v-if="!showAddProject"
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium transition-all"
+              @click="showAddProject = true"
+            >
+              <span class="text-base leading-none">＋</span>
+              新建项目
+            </button>
+          </div>
+
+          <!-- 新建项目表单 -->
+          <div v-if="showAddProject" class="p-4 rounded-xl bg-white border border-gray-200 shadow-sm space-y-3">
+            <input v-model="newProject.name" placeholder="项目名称" class="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent" />
+            <input v-model="newProject.description" placeholder="项目描述" class="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent" />
+            <input v-model="newProject.tech" placeholder="技术栈" class="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent" />
+            <div class="flex justify-end gap-2">
+              <button class="px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:bg-gray-100 transition-colors" @click="showAddProject = false">取消</button>
+              <button class="px-4 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium transition-all disabled:opacity-50" :disabled="projectLoading || !newProject.name" @click="handleCreateProject">{{ projectLoading ? '创建中...' : '创建' }}</button>
+            </div>
+          </div>
+
+          <div v-if="projects.length === 0" class="py-12 text-center text-gray-400 text-sm">暂无项目</div>
+          <div v-else class="grid gap-3">
+            <div v-for="project in projects" :key="project.id" class="flex items-start gap-3 p-3 rounded-xl bg-white border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all group">
+              <div class="flex-1 min-w-0">
+                <h3 class="text-sm font-medium text-gray-800">{{ project.name }}</h3>
+                <p class="text-xs text-gray-400 mt-0.5">{{ project.description }}</p>
+                <span class="inline-block mt-1.5 text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-500 border border-blue-100">{{ project.tech }}</span>
+              </div>
+              <button class="shrink-0 px-2 py-1 rounded-md text-[10px] text-red-400 hover:bg-red-50 hover:text-red-600 transition-all opacity-0 group-hover:opacity-100" @click="handleDeleteProject(project.id)">删除</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ======================== 个人资料 ======================== -->
+        <div v-else-if="activeTab === 'profile'" class="max-w-lg space-y-4">
+          <h2 class="text-base font-bold text-gray-800">👤 个人资料</h2>
+
+          <div class="p-5 rounded-xl bg-white border border-gray-200 shadow-sm space-y-4">
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">头像 Emoji</label>
+              <input v-model="profileForm.avatar_emoji" class="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-blue-400" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">姓名</label>
+              <input v-model="profileForm.name" class="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-blue-400" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">头衔</label>
+              <input v-model="profileForm.title" class="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-blue-400" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">个人简介</label>
+              <textarea v-model="profileForm.bio" rows="4" class="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-blue-400 resize-none"></textarea>
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">标签（逗号分隔）</label>
+              <input
+                :value="profileForm.tags.join(', ')"
+                @input="(e: any) => { profileForm.tags = e.target.value.split(',').map((t: string) => t.trim()) }"
+                placeholder="Vue 3, TypeScript, Go"
+                class="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+            <button class="w-full py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium transition-all disabled:opacity-50" :disabled="profileLoading" @click="handleSaveProfile">
+              {{ profileLoading ? '保存中...' : '保存修改' }}
+            </button>
+          </div>
+
+          <!-- 预览 -->
+          <div class="p-5 rounded-xl bg-white border border-gray-200 shadow-sm">
+            <h3 class="text-xs text-gray-400 mb-3">👁️ 预览</h3>
+            <div class="flex flex-col items-center py-3 space-y-2">
+              <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-2xl text-white shadow-md">
+                {{ profileForm.avatar_emoji || '?' }}
+              </div>
+              <div class="text-center">
+                <p class="text-sm font-semibold text-gray-800">{{ profileForm.name || '(未填写)' }}</p>
+                <p class="text-xs text-gray-400">{{ profileForm.title || '(未填写)' }}</p>
+              </div>
+            </div>
+            <p class="text-xs text-gray-500 text-center leading-relaxed">{{ profileForm.bio || '(未填写)' }}</p>
+          </div>
+        </div>
+
+        <!-- ======================== 联系方式 ======================== -->
+        <div v-else-if="activeTab === 'contacts'" class="max-w-lg space-y-4">
+          <h2 class="text-base font-bold text-gray-800">📬 联系方式</h2>
+
+          <div class="p-5 rounded-xl bg-white border border-gray-200 shadow-sm space-y-4">
+            <div v-for="(item, i) in contactsEdit" :key="i" class="flex items-center gap-3">
+              <span class="text-xl shrink-0">{{ item.icon }}</span>
+              <div class="flex-1 grid grid-cols-2 gap-2">
+                <input v-model="item.label" placeholder="标签" class="px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-xs outline-none focus:ring-2 focus:ring-blue-400" />
+                <input v-model="item.value" placeholder="内容" class="px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-xs outline-none focus:ring-2 focus:ring-blue-400" />
+              </div>
+            </div>
+            <button class="w-full py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium transition-all disabled:opacity-50" :disabled="contactsLoading" @click="handleSaveContacts">
+              {{ contactsLoading ? '保存中...' : '保存修改' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast 消息 -->
+    <Transition name="toast">
+      <div
+        v-if="toastMessage"
+        class="absolute bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg text-xs text-white shadow-lg z-50"
+        :class="toastType === 'success' ? 'bg-green-500' : 'bg-red-500'"
+      >
+        {{ toastMessage }}
+      </div>
+    </Transition>
+  </div>
 </template>
+
+<style scoped>
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 0.3s ease;
+}
+.toast-enter-from {
+  opacity: 0;
+  transform: translate(-50%, 10px);
+}
+.toast-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -10px);
+}
+</style>
