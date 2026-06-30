@@ -1,11 +1,12 @@
 <script setup lang="ts">
 /**
- * AppIcon.vue - 桌面图标组件（支持拖拽）
+ * AppIcon.vue - 桌面图标组件（网格吸附拖拽）
  *
  * 功能：
  * - 显示应用图标（Lucide）+ 文字标签
- * - 使用 CSS3 transform: translate() 实现位置渲染（硬件加速 60fps）
+ * - 使用 CSS3 transform: translate() 渲染位置（硬件加速 60fps）
  * - 原生 mousedown/mousemove/mouseup 拖拽
+ * - 拖拽时实时吸附到网格（Windows 风格）
  * - 拖拽时禁用 transition，结束后恢复
  * - 双击打开窗口（拖拽距离 < 5px 才触发）
  */
@@ -16,12 +17,25 @@ import { computed, ref, h } from 'vue'
 const props = defineProps<{
   app: AppDefinition
   position: Position
+  cellWidth: number
+  cellHeight: number
+  gridOffsetX: number
+  gridOffsetY: number
 }>()
 
 const emit = defineEmits<{
   open: []
   positionChange: [pos: Position]
 }>()
+
+// ============ 网格吸附工具函数 ============
+
+function snapToGrid(pos: Position): Position {
+  return {
+    x: Math.round((pos.x - props.gridOffsetX) / props.cellWidth) * props.cellWidth + props.gridOffsetX,
+    y: Math.round((pos.y - props.gridOffsetY) / props.cellHeight) * props.cellHeight + props.gridOffsetY,
+  }
+}
 
 // ============ 图标渲染 ============
 
@@ -72,7 +86,8 @@ function onDragMove(e: MouseEvent) {
   const clampedX = Math.max(0, Math.min(newX, window.innerWidth - 96))
   const clampedY = Math.max(0, Math.min(newY, window.innerHeight - 112))
 
-  dragPos.value = { x: clampedX, y: clampedY }
+  // 实时吸附到最近的网格点（拖拽中即显示对齐效果）
+  dragPos.value = snapToGrid({ x: clampedX, y: clampedY })
 
   // 判断是否超过拖拽阈值
   const dx = newX - currentPos.value.x

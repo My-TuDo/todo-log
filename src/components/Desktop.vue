@@ -64,31 +64,41 @@ const contextMenu = ref<{ x: number; y: number } | null>(null)
 /** 每个桌面图标的位置（id -> Position），使用 transform 渲染 */
 const iconPositions = ref<Record<string, Position>>({})
 
-/** 网格布局参数 */
-const GRID_COLS = 1           // 每列数（垂直排列时为1）
-const ICON_WIDTH = 96         // 图标宽度 w-24 = 96px
-const ICON_HEIGHT = 112       // 图标高度 h-28 = 112px
-const GRID_GAP = 4            // 间距 gap-1 = 4px
-const GRID_OFFSET_X = 24      // 距左边界 top-6 = 24px
-const GRID_OFFSET_Y = 24      // 距上边界 left-6 = 24px
+/**
+ * 网格布局参数（Windows 风格）
+ * 所有图标自动吸附到网格线，保证行列对齐
+ */
+const CELL_WIDTH = 100        // 网格单元宽度（px）
+const CELL_HEIGHT = 120       // 网格单元高度（px）
+const GRID_OFFSET_X = 24      // 网格起始 X 偏移
+const GRID_OFFSET_Y = 24      // 网格起始 Y 偏移
+const GRID_COLS = 8           // 每行图标数（超出自动折行）
 
-/** 初始化/重置图标位置为网格布局 */
+/** 将任意位置吸附到最近的网格点 */
+function snapToGrid(pos: Position): Position {
+  return {
+    x: Math.round((pos.x - GRID_OFFSET_X) / CELL_WIDTH) * CELL_WIDTH + GRID_OFFSET_X,
+    y: Math.round((pos.y - GRID_OFFSET_Y) / CELL_HEIGHT) * CELL_HEIGHT + GRID_OFFSET_Y,
+  }
+}
+
+/** 初始化图标位置为网格布局 */
 function initIconPositions() {
   const positions: Record<string, Position> = {}
   props.apps.forEach((app, index) => {
     const col = index % GRID_COLS
     const row = Math.floor(index / GRID_COLS)
     positions[app.id] = {
-      x: GRID_OFFSET_X + col * (ICON_WIDTH + GRID_GAP),
-      y: GRID_OFFSET_Y + row * (ICON_HEIGHT + GRID_GAP),
+      x: GRID_OFFSET_X + col * CELL_WIDTH,
+      y: GRID_OFFSET_Y + row * CELL_HEIGHT,
     }
   })
   iconPositions.value = positions
 }
 
-/** 更新某个图标的位置（拖拽完成后调用） */
+/** 更新某个图标的位置（拖拽完成后调用，自动吸附到网格） */
 function updateIconPosition(id: string, position: Position) {
-  iconPositions.value[id] = position
+  iconPositions.value[id] = snapToGrid(position)
 }
 
 // 初始化位置
@@ -261,12 +271,16 @@ function handleContextMenuOpenApp(appId: string) {
     }"
     @contextmenu="handleContextMenu"
   >
-    <!-- 桌面图标层（绝对定位，支持拖拽） -->
+    <!-- 桌面图标层（网格吸附，支持拖拽） -->
     <AppIcon
       v-for="app in apps"
       :key="app.id"
       :app="app"
       :position="iconPositions[app.id] ?? { x: 0, y: 0 }"
+      :cell-width="CELL_WIDTH"
+      :cell-height="CELL_HEIGHT"
+      :grid-offset-x="GRID_OFFSET_X"
+      :grid-offset-y="GRID_OFFSET_Y"
       @open="openApp(app)"
       @position-change="(pos: Position) => updateIconPosition(app.id, pos)"
     />
