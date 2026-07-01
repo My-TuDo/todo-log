@@ -144,3 +144,9 @@ vite.config.ts.timestamp-*
 
 # VS Code agent customization
 .github/
+
+# Personal notes
+notes/
+
+# Personal notes
+notes/

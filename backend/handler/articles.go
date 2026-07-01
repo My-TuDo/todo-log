@@ -1,11 +1,42 @@
 package handler
 
-import "github.com/gin-gonic/gin"
+import (
+	"todo-blog/database"
+
+	"github.com/gin-gonic/gin"
+)
+
+var articles = []map[string]any{}
 
 func GetArticles(c *gin.Context) {
-	c.JSON(200, []map[string]any{
-		{"id": 1, "title": "文章标题1", "content": "文章内容1"},
-		{"id": 2, "title": "文章标题2", "content": "文章内容2"},
-	})
+	// 这里可以从数据库中获取文章列表，暂时返回模拟数据
+	rows, err := database.DB.Query("SELECT id, title, summary, created_at, views FROM articles")
+	if err != nil {
+		c.JSON(500, gin.H{"error": "查询失败"})
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int
+		var title, summary, createdAt string
+		var views int
+
+		err := rows.Scan(&id, &title, &summary, &createdAt, &views)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "数据解析失败"})
+			return
+		}
+
+		// 返回 JSON
+		articles = append(articles, map[string]any{
+			"id":         id,
+			"title":      title,
+			"summary":    summary,
+			"created_at": createdAt,
+			"views":      views,
+		})
+	}
+	c.JSON(200, articles)
 
 }

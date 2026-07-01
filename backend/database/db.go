@@ -3,34 +3,20 @@ package database
 import (
 	"database/sql"
 	"log"
-	"os"
-	"path/filepath"
 
-	_ "modernc.org/sqlite"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 var DB *sql.DB
 
-// Init 初始化 SQLite 数据库，创建表并插入种子数据
+// Init 初始化 MySQL 数据库，创建表并插入种子数据
 func Init() {
-	dbPath := "blog.db"
-
-	// 确保 backend 目录存在
-	dir := filepath.Dir(dbPath)
-	if dir != "." {
-		os.MkdirAll(dir, 0755)
-	}
 
 	var err error
-	DB, err = sql.Open("sqlite", dbPath)
+	DB, err = sql.Open("mysql", "xzh:1234567@tcp(127.0.0.1:3306)/todo_blog?charset=utf8mb4&parseTime=True")
 	if err != nil {
 		log.Fatalf("打开数据库失败: %v", err)
 	}
-
-	// 启用 WAL 模式，提升并发性能
-	DB.Exec("PRAGMA journal_mode=WAL")
-	// 启用外键约束
-	DB.Exec("PRAGMA foreign_keys=ON")
 
 	createTables()
 	seedData()
@@ -38,42 +24,43 @@ func Init() {
 
 // createTables 创建数据库表
 func createTables() {
-	schema := `
-	CREATE TABLE IF NOT EXISTS articles (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		title TEXT NOT NULL,
-		summary TEXT NOT NULL DEFAULT '',
-		created_at TEXT NOT NULL DEFAULT (date('now')),
-		views INTEGER NOT NULL DEFAULT 0
-	);
-
-	CREATE TABLE IF NOT EXISTS projects (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		description TEXT NOT NULL DEFAULT '',
-		tech TEXT NOT NULL DEFAULT ''
-	);
-
-	CREATE TABLE IF NOT EXISTS profile (
-		id INTEGER PRIMARY KEY CHECK (id = 1),
-		name TEXT NOT NULL DEFAULT 'TUDO',
-		title TEXT NOT NULL DEFAULT '',
-		avatar_emoji TEXT NOT NULL DEFAULT '🐱',
-		bio TEXT NOT NULL DEFAULT '',
-		tags TEXT NOT NULL DEFAULT '[]'
-	);
-
-	CREATE TABLE IF NOT EXISTS contacts (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		icon TEXT NOT NULL,
-		label TEXT NOT NULL,
-		value TEXT NOT NULL
-	);
-	`
-
-	_, err := DB.Exec(schema)
-	if err != nil {
-		log.Fatalf("创建表失败: %v", err)
+	queries := []string{
+		// 创建文章表
+		`CREATE TABLE IF NOT EXISTS articles (
+			id INT AUTO_INCREMENT PRIMARY KEY,
+			title TEXT NOT NULL,
+			summary VARCHAR(500) NOT NULL DEFAULT '',
+			created_at DATE NOT NULL DEFAULT (CURDATE()),
+			views INT NOT NULL DEFAULT 0
+		)`,
+		// 创建项目表
+		`CREATE TABLE IF NOT EXISTS projects (
+			id INT AUTO_INCREMENT PRIMARY KEY,
+			name TEXT NOT NULL,
+			description VARCHAR(500) NOT NULL DEFAULT '',
+			tech VARCHAR(100) NOT NULL DEFAULT ''
+		)`,
+		// 创建个人资料表
+		`CREATE TABLE IF NOT EXISTS profile (
+			id INT PRIMARY KEY,
+			name VARCHAR(100) NOT NULL DEFAULT 'TUDO',
+			title VARCHAR(100) NOT NULL DEFAULT '',
+			avatar_emoji VARCHAR(10) NOT NULL DEFAULT '',
+			bio TEXT NOT NULL,
+			tags TEXT NOT NULL
+		)`,
+		// 创建联系方式表
+		`CREATE TABLE IF NOT EXISTS contacts (
+			id INT AUTO_INCREMENT PRIMARY KEY,
+			icon TEXT NOT NULL,
+			label TEXT NOT NULL,
+			value TEXT NOT NULL
+		)`,
+	}
+	for _, q := range queries {
+		if _, err := DB.Exec(q); err != nil {
+			log.Fatalf("创建表失败: %v", err)
+		}
 	}
 }
 

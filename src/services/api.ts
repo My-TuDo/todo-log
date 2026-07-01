@@ -13,7 +13,7 @@ import { mockArticles, mockProfile, mockProjects, mockContacts } from '../mock/d
 // ============================================================
 // 开关：是否使用 Mock 数据
 // ============================================================
-const USE_MOCK = true
+const USE_MOCK = false
 
 // ============================================================
 // 基础 fetch 封装
