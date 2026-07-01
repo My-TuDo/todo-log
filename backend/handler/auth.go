@@ -1,11 +1,13 @@
 package handler
 
 import (
+	"time"
+	"todo-blog/config"
+
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
-
-const PasswordHash = "$2a$10$wIQRM2F4Th8a.HLtU667GeDDnAn2pr60WS.wK48dE6Vz57DwOgkdu" // 预先生成的密码哈希
 
 // 功能实现：用户登录验证
 func Login(c *gin.Context) {
@@ -19,10 +21,27 @@ func Login(c *gin.Context) {
 	}
 
 	// 进行密码比对
-	if err := bcrypt.CompareHashAndPassword([]byte("$2a$10$wIQRM2F4Th8a.HLtU667GeDDnAn2pr60WS.wK48dE6Vz57DwOgkdu"), []byte(req.Password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(config.PasswordHash), []byte(req.Password)); err != nil {
 		c.JSON(401, gin.H{"error": "密码错误"})
 		return
 	}
 
-	c.JSON(200, gin.H{"message": "登录成功"})
+	IssueToken(c) // 签发 JWT Token
+}
+
+// 签发 JWT Token
+func IssueToken(c *gin.Context) {
+	// 创建 claims
+	claims := jwt.MapClaims{
+		"role": "admin",                               // 用户角色
+		"exp":  time.Now().Add(24 * time.Hour).Unix(), // 24h timeout
+	}
+
+	// 用 HS256 算法签名
+	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+
+	// 用密钥加密成字符串
+	tokenString, _ := token.SignedString([]byte(config.JWTSecret))
+
+	c.JSON(200, gin.H{"token": tokenString})
 }

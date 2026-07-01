@@ -147,3 +147,6 @@ vite.config.ts.timestamp-*
 
 # Personal notes
 notes/
+
+# Password Hash
+backend/hash
