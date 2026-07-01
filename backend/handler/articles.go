@@ -6,9 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var articles = []map[string]any{}
-
 func GetArticles(c *gin.Context) {
+	var articles = []map[string]any{}
 	// 这里可以从数据库中获取文章列表，暂时返回模拟数据
 	rows, err := database.DB.Query("SELECT id, title, summary, created_at, views FROM articles")
 	if err != nil {

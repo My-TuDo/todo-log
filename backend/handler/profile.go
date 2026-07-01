@@ -6,9 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var profile = []map[string]any{}
-
 func GetProfile(c *gin.Context) {
+	var profile = []map[string]any{}
 	rows, err := database.DB.Query("SELECT * FROM profile LIMIT 1")
 	if err != nil {
 		c.JSON(500, gin.H{"error": "查询失败"})

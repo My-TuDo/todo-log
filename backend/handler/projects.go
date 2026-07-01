@@ -6,9 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var projects = []map[string]any{}
-
 func GetProjects(c *gin.Context) {
+	var projects = []map[string]any{}
 	rows, err := database.DB.Query("SELECT * FROM projects")
 	if err != nil {
 		c.JSON(500, gin.H{"error": "查询失败"})

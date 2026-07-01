@@ -6,9 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var contactInfo = []map[string]any{}
-
 func GetContact(c *gin.Context) {
+	var contactInfo = []map[string]any{}
 	rows, err := database.DB.Query("SELECT * FROM contacts")
 	if err != nil {
 		c.JSON(500, gin.H{"error": "查询失败"})

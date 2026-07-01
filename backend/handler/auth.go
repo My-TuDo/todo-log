@@ -38,7 +38,7 @@ func IssueToken(c *gin.Context) {
 	}
 
 	// 用 HS256 算法签名
-	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	// 用密钥加密成字符串
 	tokenString, _ := token.SignedString([]byte(config.JWTSecret))
