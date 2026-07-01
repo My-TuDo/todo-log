@@ -1,12 +1,37 @@
 package handler
 
-import "github.com/gin-gonic/gin"
+import (
+	"todo-blog/database"
+
+	"github.com/gin-gonic/gin"
+)
+
+var contactInfo = []map[string]any{}
 
 func GetContact(c *gin.Context) {
-	c.JSON(200, []map[string]any{
-		{"icon": "📧", "label": "Email", "value": "todo@example.com"},
-		{"icon": "🐙", "label": "GitHub", "value": "github.com/My-TuDo"},
-		{"icon": "📱", "label": "微信", "value": "TODO_WeChat"},
-		{"icon": "🐦", "label": "Twitter / X", "value": "@TODO_dev"},
-	})
+	rows, err := database.DB.Query("SELECT * FROM contacts")
+	if err != nil {
+		c.JSON(500, gin.H{"error": "查询失败"})
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int
+		var icon, label, value string
+
+		err := rows.Scan(&id, &icon, &label, &value)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "数据解析失败"})
+			return
+		}
+
+		contactInfo = append(contactInfo, map[string]any{
+			"id":    id,
+			"icon":  icon,
+			"label": label,
+			"value": value,
+		})
+	}
+	c.JSON(200, contactInfo)
 }

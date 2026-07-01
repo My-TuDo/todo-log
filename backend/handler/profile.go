@@ -1,13 +1,39 @@
 package handler
 
-import "github.com/gin-gonic/gin"
+import (
+	"todo-blog/database"
+
+	"github.com/gin-gonic/gin"
+)
+
+var profile = []map[string]any{}
 
 func GetProfile(c *gin.Context) {
-	c.JSON(200, map[string]any{
-		"name":         "TUDO",
-		"title":        "全栈开发者 / 学生",
-		"avatar_emoji": "🐱",
-		"bio":          "热爱编程、设计和一切有趣的事物。这个博客将记录我的学习笔记、项目经验和生活思考。🚀",
-		"tags":         []string{"Vue", "Go", "TypeScript", "Tailwind CSS", "Docker"},
-	})
+	rows, err := database.DB.Query("SELECT * FROM profile LIMIT 1")
+	if err != nil {
+		c.JSON(500, gin.H{"error": "查询失败"})
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int
+		var name, title, avatar_emoji, bio, tags string
+
+		err := rows.Scan(&id, &name, &title, &avatar_emoji, &bio, &tags)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "数据解析失败"})
+			return
+		}
+
+		profile = append(profile, map[string]any{
+			"id":           id,
+			"name":         name,
+			"title":        title,
+			"avatar_emoji": avatar_emoji,
+			"bio":          bio,
+			"tags":         tags,
+		})
+	}
+	c.JSON(200, profile)
 }

@@ -1,11 +1,37 @@
 package handler
 
-import "github.com/gin-gonic/gin"
+import (
+	"todo-blog/database"
+
+	"github.com/gin-gonic/gin"
+)
+
+var projects = []map[string]any{}
 
 func GetProjects(c *gin.Context) {
-	c.JSON(200, []map[string]any{
-		{"id": 1, "name": "TODO Blog", "description": "仿 macOS 桌面的个人博客系统", "tech": "Vue 3 + Go"},
-		{"id": 2, "name": "Task Manager", "description": "简洁高效的待办事项管理工具", "tech": "React + Node.js"},
-		{"id": 3, "name": "Weather App", "description": "实时天气查询与预报应用", "tech": "Vue 3 + API"},
-	})
+	rows, err := database.DB.Query("SELECT * FROM projects")
+	if err != nil {
+		c.JSON(500, gin.H{"error": "查询失败"})
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int
+		var name, description, tech string
+
+		err := rows.Scan(&id, &name, &description, &tech)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "数据解析失败"})
+			return
+		}
+
+		projects = append(projects, map[string]any{
+			"id":          id,
+			"name":        name,
+			"description": description,
+			"tech":        tech,
+		})
+	}
+	c.JSON(200, projects)
 }

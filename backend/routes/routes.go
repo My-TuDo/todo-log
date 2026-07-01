@@ -24,6 +24,7 @@ func CORSMiddleware() gin.HandlerFunc {
 }
 
 func SetupRoutes(r *gin.Engine) {
+	r.Use(CORSMiddleware()) // 使用 CORS 中间件
 	r.GET("/api/articles", handler.GetArticles)
 	r.GET("/api/projects", handler.GetProjects)
 	r.GET("/api/profile", handler.GetProfile)
